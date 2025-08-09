@@ -1,97 +1,130 @@
 const gallery = document.getElementById('gallery');
+const timeline = document.getElementById('timeline');
 const form = document.getElementById('memoryForm');
 const imgFileInput = document.getElementById('imgFile');
+const dateInput = document.getElementById('date');
 
-function createMemoryItem(imgUrl, description, index) {
-    const col = document.createElement('div');
-    col.className = 'col-md-6';
+function createMemoryCard(memory, index) {
+  const card = document.createElement('div');
+  card.className = 'memory-card';
+  card.style.animationDelay = `${index * 0.1}s`; // Tạo hiệu ứng đổ lần lượt
 
-    const card = document.createElement('div');
-    card.className = 'card';
+  // Ảnh
+  const img = document.createElement('img');
+  img.src = memory.imgUrl;
+  img.alt = 'Ảnh kỷ niệm';
 
-    const img = document.createElement('img');
-    img.src = imgUrl;
-    img.className = 'card-img-top';
-    img.alt = 'Ảnh kỷ niệm';
+  // Mô tả
+  const desc = document.createElement('div');
+  desc.className = 'memory-desc';
+  desc.textContent = memory.description;
 
-    const cardBody = document.createElement('div');
-    cardBody.className = 'card-body';
+  // Nút xoá
+  const btnDelete = document.createElement('button');
+  btnDelete.className = 'delete-btn';
+  btnDelete.textContent = 'Xoá';
+  btnDelete.title = 'Xoá kỷ niệm này';
+  btnDelete.addEventListener('click', () => {
+    removeMemory(index);
+  });
 
-    const p = document.createElement('p');
-    p.className = 'card-text';
-    p.textContent = description;
+  card.appendChild(img);
+  card.appendChild(desc);
+  card.appendChild(btnDelete);
 
-    const btnDelete = document.createElement('button');
-    btnDelete.textContent = 'Xoá';
-    btnDelete.className = 'btn btn-danger btn-sm mt-2';
+  return card;
+}
 
-    btnDelete.addEventListener('click', () => {
-        gallery.removeChild(col);
-        removeMemory(index);
-        reloadGallery();
-    });
+function createTimelineItem(memory) {
+  const li = document.createElement('li');
 
-    cardBody.appendChild(p);
-    cardBody.appendChild(btnDelete);
+  const dateSpan = document.createElement('div');
+  dateSpan.className = 'timeline-date';
+  dateSpan.textContent = new Date(memory.date).toLocaleDateString('vi-VN', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  });
 
-    card.appendChild(img);
-    card.appendChild(cardBody);
-    col.appendChild(card);
+  const descSpan = document.createElement('div');
+  descSpan.className = 'timeline-desc';
+  descSpan.textContent = memory.description;
 
-    return col;
+  li.appendChild(dateSpan);
+  li.appendChild(descSpan);
+
+  return li;
 }
 
 function loadMemories() {
-    const memories = JSON.parse(localStorage.getItem('memories')) || [];
-    return memories;
+  const memories = JSON.parse(localStorage.getItem('memories')) || [];
+  return memories;
 }
 
 function saveMemories(memories) {
-    localStorage.setItem('memories', JSON.stringify(memories));
+  localStorage.setItem('memories', JSON.stringify(memories));
 }
 
-function reloadGallery() {
-    gallery.innerHTML = '';
-    const memories = loadMemories();
-    memories.forEach((mem, idx) => {
-        const item = createMemoryItem(mem.imgUrl, mem.description, idx);
-        gallery.appendChild(item);
-    });
+function render() {
+  const memories = loadMemories();
+
+  // Sắp xếp theo ngày tăng dần
+  memories.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+  // Xóa hết hiện tại
+  gallery.innerHTML = '';
+  timeline.innerHTML = '';
+
+  memories.forEach((memory, idx) => {
+    // Tạo card ảnh
+    const card = createMemoryCard(memory, idx);
+    gallery.appendChild(card);
+
+    // Tạo timeline
+    const timelineItem = createTimelineItem(memory);
+    timeline.appendChild(timelineItem);
+  });
 }
 
 function removeMemory(index) {
-    const memories = loadMemories();
-    memories.splice(index, 1);
-    saveMemories(memories);
+  let memories = loadMemories();
+  memories.splice(index, 1);
+  saveMemories(memories);
+  render();
 }
 
 form.addEventListener('submit', (e) => {
-    e.preventDefault();
+  e.preventDefault();
 
-    const file = imgFileInput.files[0];
-    const description = form.description.value.trim();
+  const file = imgFileInput.files[0];
+  const description = form.description.value.trim();
+  const date = form.date.value;
 
-    if (!file) {
-        alert('Bạn cần chọn 1 ảnh!');
-        return;
-    }
-    if (!description) {
-        alert('Bạn cần nhập kỷ niệm!');
-        return;
-    }
+  if (!file) {
+    alert('Bạn cần chọn 1 ảnh!');
+    return;
+  }
+  if (!description) {
+    alert('Bạn cần nhập kỷ niệm!');
+    return;
+  }
+  if (!date) {
+    alert('Bạn cần chọn ngày kỷ niệm!');
+    return;
+  }
 
-    const reader = new FileReader();
-    reader.onload = function(event) {
-        const base64img = event.target.result; // base64 string
+  const reader = new FileReader();
+  reader.onload = function (event) {
+    const base64img = event.target.result;
 
-        const memories = loadMemories();
-        memories.push({ imgUrl: base64img, description });
-        saveMemories(memories);
-        reloadGallery();
-        form.reset();
-    };
-    reader.readAsDataURL(file);
+    const memories = loadMemories();
+    memories.push({ imgUrl: base64img, description, date });
+    saveMemories(memories);
+    render();
+    form.reset();
+  };
+  reader.readAsDataURL(file);
 });
 
-// Load bộ nhớ lúc đầu
-reloadGallery();
+// Khởi động
+render();
